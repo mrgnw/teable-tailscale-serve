@@ -5,7 +5,6 @@ services:
     image: tailscale/tailscale
     restart: always
     ports: ["4164:4164"]
-    
     volumes:
       - ./tailscale:/var/lib/tailscale:rw
       - ${PWD}/config:/config
