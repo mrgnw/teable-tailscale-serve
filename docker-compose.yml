@@ -1,0 +1,82 @@
+version: "3.9"
+
+services:
+  tailscale:
+    image: tailscale/tailscale
+    restart: always
+    ports: ["4164:4164"]
+    
+    volumes:
+      - ./tailscale:/var/lib/tailscale:rw
+      - ${PWD}/config:/config
+    environment:
+      - TS_AUTHKEY=${TS_AUTHKEY}
+      - TS_HOSTNAME=t
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_SERVE_CONFIG=./config/serve.json
+    networks:
+      - teablescale
+    cap_add:
+        - net_admin 
+        - sys_module
+  teable:
+    image: ghcr.io/teableio/teable:latest
+    restart: always
+    network_mode: service:tailscale
+    volumes:
+      - ./teable/data:/app/.assets:rw
+    env_file:
+      - .env
+    environment:
+      - TZ=${TIMEZONE}
+      - NEXT_ENV_IMAGES_ALL_REMOTE=true
+      - HOST=0.0.0.0
+    depends_on:
+      teable-db-migrate:
+        condition: service_completed_successfully
+
+  teable-db:
+    image: postgres:16
+    restart: always
+    ports: ["42345:5432"]
+    volumes:
+      - ./data:/var/lib/postgresql/data:rw
+    environment:
+      - TZ=${TIMEZONE}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - PUBLIC_ORIGIN=https://t.skate-in.ts.net
+    networks:
+      - teablescale
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "sh -c 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}'",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  teable-db-migrate:
+    image: ghcr.io/teableio/teable-db-migrate:latest
+    environment:
+      - TZ=${TIMEZONE}
+      - PRISMA_DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+
+    networks:
+      - teablescale
+    depends_on:
+      teable-db:
+        condition: service_healthy
+
+networks:
+  teablescale:
+    name: teablescale-network
+    driver: bridge
+
+volumes:
+  teable-data: {}
+  teable-db: {}
+  tailscale: {}
