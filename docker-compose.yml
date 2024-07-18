@@ -17,10 +17,10 @@ services:
     networks:
       - teablescale
     cap_add:
-        - net_admin 
-        - sys_module
+      - net_admin
+      - sys_module
   teable:
-    image: ghcr.io/teableio/teable:latest
+    image: ghcr.io/teableio/teable
     restart: always
     network_mode: service:tailscale
     volumes:
@@ -60,7 +60,7 @@ services:
       retries: 3
 
   teable-db-migrate:
-    image: ghcr.io/teableio/teable-db-migrate:latest
+    image: ghcr.io/teableio/teable-db-migrate
     environment:
       - TZ=${TIMEZONE}
       - PRISMA_DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
